@@ -1,0 +1,178 @@
+[
+  {
+    "id": 1,
+    "brand": "COLLETTE",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 48.99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Clothing",
+    "collection": "New Arrival"
+  },
+  {
+    "id": 2,
+    "brand": "JIMMY CHOO",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 418.99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Accessories",
+    "collection": "Luxury Picks"
+  },
+  {
+    "id": 3,
+    "brand": "DAVENTRY MEERS",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Clothing",
+    "collection": "New Arrival"
+  },
+  {
+    "id": 4,
+    "brand": "BURBERRY",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 418.99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "soldout",
+    "category": "Beauty",
+    "collection": "Luxury Picks"
+  },
+  {
+    "id": 5,
+    "brand": "DONATELLO",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 86,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "freeshipping",
+    "category": "Decor",
+    "collection": "Home Style"
+  },
+  {
+    "id": 6,
+    "brand": "FRENCH CONNECTION",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 69.99,
+    "compareAtPrice": 86,
+    "image": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "sale",
+    "category": "Audio",
+    "collection": "Trending Deals"
+  },
+  {
+    "id": 7,
+    "brand": "MODERN AMUSEMENT",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 218.99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1601924357840-3e50ad4dd9be?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "custom",
+    "category": "Accessories",
+    "collection": "New Arrival"
+  },
+  {
+    "id": 8,
+    "brand": "TOMORROW",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 36.99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1513883049090-d0b7439799bf?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Music",
+    "collection": "Home Style"
+  },
+  {
+    "id": 9,
+    "brand": "NORDIC STUDIO",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 57.5,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Clothing",
+    "collection": "Essentials"
+  },
+  {
+    "id": 10,
+    "brand": "ATELIER LUXE",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 129,
+    "compareAtPrice": 149,
+    "image": "https://images.unsplash.com/photo-1511401139252-f158d3209c17?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "sale",
+    "category": "Accessories",
+    "collection": "Trending Deals"
+  },
+  {
+    "id": 11,
+    "brand": "LUNA CARE",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 42,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Beauty",
+    "collection": "Essentials"
+  },
+  {
+    "id": 12,
+    "brand": "WOOD & LOOM",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 91.25,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1616627561950-9f746e330187?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "freeshipping",
+    "category": "Decor",
+    "collection": "Home Style"
+  },
+  {
+    "id": 13,
+    "brand": "SOUNDMATE",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 112.49,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Audio",
+    "collection": "Top Rated"
+  },
+  {
+    "id": 14,
+    "brand": "PIANO HOUSE",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 54.99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=900&q=80",
+    "badgeType": null,
+    "category": "Music",
+    "collection": "Top Rated"
+  },
+  {
+    "id": 15,
+    "brand": "MONO MINIMAL",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 73.99,
+    "compareAtPrice": null,
+    "image": "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "custom",
+    "category": "Clothing",
+    "collection": "Essentials"
+  },
+  {
+    "id": 16,
+    "brand": "ORCHID BLEND",
+    "title": "Sample - Clothing And Accessory Boutiques For Sale",
+    "price": 64.9,
+    "compareAtPrice": 79.9,
+    "image": "https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?auto=format&fit=crop&w=900&q=80",
+    "badgeType": "sale",
+    "category": "Beauty",
+    "collection": "Trending Deals"
+  }
+]

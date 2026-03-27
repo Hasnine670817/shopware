@@ -11,6 +11,12 @@ body,
   min-height: 100%;
 }
 
+
+  .container-custom {
+    @apply sm:max-w-[540px] md:max-w-[720px] lg:max-w-[960px] xl:max-w-[1120px] 2xl:max-w-[1240px] mx-auto px-5;
+  }
+
+
 body {
   @apply bg-base-100 font-sans text-neutral antialiased;
 }
