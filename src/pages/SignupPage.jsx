@@ -35,10 +35,10 @@ const SignupPage = () => {
     await Swal.fire({
       icon: 'success',
       title: 'Signup successful!',
-      text: 'Your account has been created. Please login now.',
+      text: `Welcome ${result.user.fullName}! Your account is now active.`,
       confirmButtonColor: '#323232',
     })
-    navigate('/login')
+    navigate('/dashboard')
   }
 
   return (

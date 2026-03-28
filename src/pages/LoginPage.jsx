@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { useAuth } from '../context/AuthContext'
+import { useAdminAuth } from '../context/AdminAuthContext'
 
 const LoginPage = () => {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, setSessionUser } = useAuth()
+  const { adminLogin } = useAdminAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -20,12 +22,13 @@ const LoginPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault()
     const result = login(formData)
+    const adminResult = !result.ok ? adminLogin(formData) : null
 
-    if (!result.ok) {
+    if (!result.ok && !adminResult?.ok) {
       await Swal.fire({
         icon: 'error',
         title: 'Login failed',
-        text: result.message,
+        text: result.message || adminResult?.message,
         confirmButtonColor: '#323232',
       })
       return
@@ -34,10 +37,21 @@ const LoginPage = () => {
     await Swal.fire({
       icon: 'success',
       title: 'Login successful!',
-      text: `Welcome back, ${result.user.fullName}.`,
+      text: adminResult?.ok
+        ? 'Welcome back, Administrator.'
+        : `Welcome back, ${result.user.fullName}.`,
       confirmButtonColor: '#323232',
     })
-    navigate('/')
+
+    if (adminResult?.ok) {
+      setSessionUser({
+        id: 0,
+        fullName: 'Administrator',
+        email: adminResult.admin.email,
+      })
+    }
+
+    navigate(adminResult?.ok ? '/admin' : '/')
   }
 
   return (

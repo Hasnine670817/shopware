@@ -6,10 +6,14 @@ import CheckoutPage from './pages/CheckoutPage'
 import CheckoutInfoPage from './pages/CheckoutInfoPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
+import AdminLoginPage from './pages/AdminLoginPage'
 import OrderConfirmationPage from './pages/OrderConfirmationPage'
+import AllOrdersPage from './pages/AllOrdersPage'
+import OrderDetailsPage from './pages/OrderDetailsPage'
 import AdminPanelPage from './pages/AdminPanelPage'
 import ShopPage from './pages/ShopPage'
 import SignupPage from './pages/SignupPage'
+import UserDashboardPage from './pages/UserDashboardPage'
 import ProtectedAdminRoute from './components/ProtectedAdminRoute'
 
 const App = () => {
@@ -21,10 +25,14 @@ const App = () => {
         <Route path="/collection" element={<CollectionPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/checkout-info" element={<CheckoutInfoPage />} />
         <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+        <Route path="/dashboard" element={<UserDashboardPage />} />
+        <Route path="/dashboard/orders" element={<AllOrdersPage />} />
+        <Route path="/dashboard/orders/:orderId" element={<OrderDetailsPage />} />
         <Route
           path="/admin"
           element={

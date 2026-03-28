@@ -43,7 +43,16 @@ export const AuthProvider = ({ children }) => {
     const updatedUsers = [...users, newUser]
     setUsers(updatedUsers)
     localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers))
-    return { ok: true }
+
+    const safeUser = {
+      id: newUser.id,
+      fullName: newUser.fullName,
+      email: newUser.email,
+    }
+    setCurrentUser(safeUser)
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(safeUser))
+
+    return { ok: true, user: safeUser }
   }
 
   const login = ({ email, password }) => {
@@ -72,11 +81,22 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem(CURRENT_USER_KEY)
   }
 
+  const setSessionUser = (user) => {
+    const safeUser = {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+    }
+    setCurrentUser(safeUser)
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(safeUser))
+  }
+
   const value = {
     currentUser,
     signup,
     login,
     logout,
+    setSessionUser,
     isAuthenticated: Boolean(currentUser),
   }
 

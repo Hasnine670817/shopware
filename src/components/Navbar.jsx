@@ -1,36 +1,98 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
+import { useAdminAuth } from '../context/AdminAuthContext'
+import { MdLogout, MdOutlineDashboard } from 'react-icons/md'
+import { RiAdminLine } from 'react-icons/ri'
+import Swal from 'sweetalert2'
 
 const iconClass = 'h-5 w-5 stroke-[1.8]'
 const menuItems = [
   { label: 'Home', to: '/' },
   { label: 'Shop', to: '/shop' },
-  // { label: 'Collection', to: '/collection' },
   { label: 'Contact', to: '/contact' },
-]
-const authItems = [
-  { label: 'Login', to: '/login' },
-  { label: 'Signup', to: '/signup' },
 ]
 
 const navClass = ({ isActive }) => `transition hover:text-neutral ${isActive ? 'text-neutral' : ''}`
-const formatPrice = (price) => `$${Number(price).toFixed(2)}`
 
 const Navbar = () => {
-  const { cartItems, cartCount, subtotal, increaseQuantity, decreaseQuantity, removeFromCart, orderHistory } = useCart()
+  const { cartItems, cartCount, subtotal, increaseQuantity, decreaseQuantity, removeFromCart } = useCart()
   const { currentUser, isAuthenticated, logout } = useAuth()
+  const { isAdminAuthenticated, currentAdmin, adminLogout } = useAdminAuth()
+  const hasAccountSession = isAuthenticated || isAdminAuthenticated
+  const profileName = isAdminAuthenticated ? 'Administrator' : currentUser?.fullName
+  const profileEmail = isAdminAuthenticated ? currentAdmin?.email : currentUser?.email
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [isAccountOpen, setIsAccountOpen] = useState(false)
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef(null)
 
   useEffect(() => {
-    document.body.style.overflow = isMobileMenuOpen || isCartOpen || isAccountOpen ? 'hidden' : ''
+    document.body.style.overflow = isMobileMenuOpen || isCartOpen ? 'hidden' : ''
     return () => {
       document.body.style.overflow = ''
     }
-  }, [isMobileMenuOpen, isCartOpen, isAccountOpen])
+  }, [isMobileMenuOpen, isCartOpen])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target)
+      ) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleUserLogout = async () => {
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Logout now?',
+      text: 'You will need to login again to access your account.',
+      showCancelButton: true,
+      confirmButtonText: 'Logout',
+      confirmButtonColor: '#323232',
+      cancelButtonText: 'Cancel',
+    })
+
+    if (result.isConfirmed) {
+      logout()
+      setIsProfileDropdownOpen(false)
+      await Swal.fire({
+        icon: 'success',
+        title: 'Logged out',
+        timer: 1200,
+        showConfirmButton: false,
+      })
+    }
+  }
+
+  const handleAdminLogout = async () => {
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Logout admin?',
+      showCancelButton: true,
+      confirmButtonText: 'Logout',
+      confirmButtonColor: '#323232',
+    })
+
+    if (result.isConfirmed) {
+      adminLogout()
+      logout()
+      setIsProfileDropdownOpen(false)
+      await Swal.fire({
+        icon: 'success',
+        title: 'Admin logged out',
+        timer: 1200,
+        showConfirmButton: false,
+      })
+    }
+  }
 
   return (
     <>
@@ -75,15 +137,67 @@ const Navbar = () => {
                 </span>
               ) : null}
             </button>
-            {isAuthenticated ? (
-              <button
-                className="btn btn-ghost btn-circle btn-sm overflow-hidden bg-base-200 font-semibold uppercase"
-                onClick={() => setIsAccountOpen(true)}
-                aria-label="Open account panel"
-                title={currentUser?.fullName || 'Account'}
-              >
-                {(currentUser?.fullName || 'U').slice(0, 1)}
-              </button>
+            {hasAccountSession ? (
+              <div className="relative" ref={profileDropdownRef}>
+                <button
+                  className={`btn btn-circle btn-sm overflow-hidden border border-base-300 bg-base-200 font-semibold uppercase transition ${
+                    isProfileDropdownOpen ? 'shadow-md ring-2 ring-neutral/20' : ''
+                  }`}
+                  onClick={() => setIsProfileDropdownOpen((prev) => !prev)}
+                  aria-label="Open profile menu"
+                  title={profileName || 'Profile'}
+                >
+                  {(profileName || 'U').slice(0, 1)}
+                </button>
+
+                <div
+                  className={`absolute right-0 top-12 w-72 rounded-2xl border border-base-300 bg-white p-3 shadow-premium transition duration-200 ${
+                    isProfileDropdownOpen
+                      ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
+                      : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
+                  }`}
+                >
+                  <div className="rounded-xl bg-base-200 p-3">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 place-items-center rounded-full bg-neutral text-sm font-semibold text-white">
+                        {(profileName || 'U').slice(0, 1)}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-neutral">{profileName}</p>
+                        <p className="text-xs text-neutral/60">{profileEmail}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3">
+                    <Link
+                      to="/dashboard"
+                      className="btn px-3 text-sm font-medium btn-ghost btn-sm w-full justify-start rounded-sm"
+                      onClick={() => setIsProfileDropdownOpen(false)}
+                    >
+                      <MdOutlineDashboard />
+                      Dashboard
+                    </Link>
+                    {isAdminAuthenticated ? (
+                      <Link
+                        to="/admin"
+                        className="btn px-3 text-sm font-medium btn-ghost btn-sm mt-2 w-full justify-start rounded-sm"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                      >
+                        <RiAdminLine />
+                        Admin Panel
+                      </Link>
+                    ) : null}
+                    <button
+                      className="btn px-3 text-sm btn-outline btn-sm mt-2 w-full justify-start rounded-sm border-red-200 text-red-500 hover:border-red-500 hover:bg-red-50"
+                      onClick={isAdminAuthenticated ? handleAdminLogout : handleUserLogout}
+                    >
+                      <MdLogout />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <Link to="/login" className="btn btn-ghost btn-circle btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className={iconClass}>
@@ -143,17 +257,50 @@ const Navbar = () => {
                 {item.label}
               </NavLink>
             ))}
-            <div className="mt-3 flex items-center gap-2 border-t border-base-300 pt-4">
-              {authItems.map((item) => (
-                <NavLink
-                  key={item.label}
-                  to={item.to}
-                  className={`btn btn-sm ${item.label === 'Signup' ? 'btn-neutral' : 'btn-ghost'}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-base-300 pt-4">
+              {isAdminAuthenticated ? (
+                <>
+                  <NavLink to="/dashboard" className="btn btn-sm btn-ghost" onClick={() => setIsMobileMenuOpen(false)}>
+                    Dashboard
+                  </NavLink>
+                  <NavLink to="/admin" className="btn btn-sm btn-ghost" onClick={() => setIsMobileMenuOpen(false)}>
+                    Admin Panel
+                  </NavLink>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={async () => {
+                      setIsMobileMenuOpen(false)
+                      await handleAdminLogout()
+                    }}
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : isAuthenticated ? (
+                <>
+                  <NavLink to="/dashboard" className="btn btn-sm btn-ghost" onClick={() => setIsMobileMenuOpen(false)}>
+                    Dashboard
+                  </NavLink>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={async () => {
+                      setIsMobileMenuOpen(false)
+                      await handleUserLogout()
+                    }}
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <NavLink to="/login" className="btn btn-sm btn-ghost" onClick={() => setIsMobileMenuOpen(false)}>
+                    Login
+                  </NavLink>
+                  <NavLink to="/signup" className="btn btn-sm btn-neutral" onClick={() => setIsMobileMenuOpen(false)}>
+                    Signup
+                  </NavLink>
+                </>
+              )}
             </div>
           </nav>
         </aside>
@@ -243,85 +390,6 @@ const Navbar = () => {
               Purchase Now
             </Link>
           </div>
-        </aside>
-      </div>
-
-      <div
-        className={`fixed inset-0 z-[65] transition ${isAccountOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
-        aria-hidden={!isAccountOpen}
-      >
-        <button
-          className={`absolute inset-0 bg-black/35 transition-opacity duration-300 ${
-            isAccountOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-          onClick={() => setIsAccountOpen(false)}
-          aria-label="Close account overlay"
-        />
-
-        <aside
-          className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-base-100 shadow-premium transition-transform duration-300 ${
-            isAccountOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
-            <h3 className="text-base font-semibold uppercase tracking-[0.08em] text-neutral">My Account</h3>
-            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => setIsAccountOpen(false)} aria-label="Close account panel">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className={iconClass}>
-                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {isAuthenticated ? (
-            <>
-              <div className="border-b border-base-300 px-5 py-4">
-                <p className="text-sm font-semibold text-neutral">{currentUser?.fullName}</p>
-                <p className="text-xs text-neutral/60">{currentUser?.email}</p>
-              </div>
-              <div className="flex-1 overflow-y-auto px-5 py-4">
-                <h4 className="text-sm font-semibold uppercase tracking-[0.08em] text-neutral/70">
-                  Order History
-                </h4>
-                {orderHistory.length === 0 ? (
-                  <p className="mt-3 text-sm text-neutral/60">No orders yet.</p>
-                ) : (
-                  <div className="mt-3 space-y-3">
-                    {orderHistory.map((order) => (
-                      <article key={order.orderId} className="rounded-xl border border-base-300 p-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold text-neutral">{order.orderId}</p>
-                          <p className="text-xs text-neutral/60">
-                            {new Date(order.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <p className="mt-2 text-xs text-neutral/60">
-                          {order.items.length} item(s) • {formatPrice(order.total)}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="border-t border-base-300 px-5 py-4">
-                <button
-                  className="btn btn-outline w-full"
-                  onClick={() => {
-                    logout()
-                    setIsAccountOpen(false)
-                  }}
-                >
-                  Logout
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="p-5">
-              <p className="text-sm text-neutral/70">Please login to view your orders.</p>
-              <Link to="/login" className="btn btn-neutral mt-4 w-full" onClick={() => setIsAccountOpen(false)}>
-                Go to Login
-              </Link>
-            </div>
-          )}
         </aside>
       </div>
     </>

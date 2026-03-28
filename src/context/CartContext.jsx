@@ -72,6 +72,7 @@ export const CartProvider = ({ children }) => {
     const newOrder = {
       orderId: `ORD-${Date.now().toString().slice(-8)}`,
       createdAt: new Date().toISOString(),
+      status: 'pending',
       items: cartItems,
       subtotal: subtotalValue,
       total: subtotalValue,

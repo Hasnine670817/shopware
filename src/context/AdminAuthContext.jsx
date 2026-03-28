@@ -2,6 +2,7 @@
 import { createContext, useContext, useState } from 'react'
 
 const ADMIN_SESSION_KEY = 'shopware_admin_session'
+const ADMIN_USER_KEY = 'shopware_admin_user'
 const ADMIN_EMAIL = 'admin@shopware.com'
 const ADMIN_PASSWORD = 'Admin@12345'
 
@@ -15,8 +16,17 @@ const getStoredAdminSession = () => {
   }
 }
 
+const getStoredAdminUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem(ADMIN_USER_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
 export const AdminAuthProvider = ({ children }) => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(getStoredAdminSession)
+  const [currentAdmin, setCurrentAdmin] = useState(getStoredAdminUser)
 
   const adminLogin = ({ email, password }) => {
     const valid =
@@ -26,18 +36,28 @@ export const AdminAuthProvider = ({ children }) => {
       return { ok: false, message: 'Invalid admin email or password.' }
     }
 
+    const adminUser = {
+      email: ADMIN_EMAIL,
+      role: 'Super Admin',
+    }
+
     setIsAdminAuthenticated(true)
     localStorage.setItem(ADMIN_SESSION_KEY, 'true')
-    return { ok: true }
+    setCurrentAdmin(adminUser)
+    localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser))
+    return { ok: true, admin: adminUser }
   }
 
   const adminLogout = () => {
     setIsAdminAuthenticated(false)
+    setCurrentAdmin(null)
     localStorage.removeItem(ADMIN_SESSION_KEY)
+    localStorage.removeItem(ADMIN_USER_KEY)
   }
 
   const value = {
     isAdminAuthenticated,
+    currentAdmin,
     adminLogin,
     adminLogout,
     adminCredentialsHint: {
