@@ -16,6 +16,7 @@ const highlights = [
   },
 ]
 
+import { Link } from 'react-router-dom';
 import heroImage from '../assets/banner-bg-1.jpg';
 
 const HeroSection = () => {
@@ -30,11 +31,11 @@ const HeroSection = () => {
               <div className="max-w-xl">
                 <h1 className="mt-4 text-3xl font-bold leading-tight md:text-4xl text-[#323232] text-uppercase" style={{ textTransform: 'uppercase' }}>Top Shopware <br className='hidden md:block lg:hidden' /> Theme</h1>
                 <span className='w-[60px] h-[2px] bg-[#323232] block mt-4 mb-4'></span>
-                <p className="mt-3 max-w-lg text-xs md:text-sm text-[#323232] max-w-[300px] xl:max-w-[450px]">
+                <p className="mt-3 text-xs md:text-sm text-[#323232] max-w-[300px] xl:max-w-[450px]">
                   Curated premium goods for everyday life. Discover statement pieces designed for modern living.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
-                  <button className="btn rounded-sm bg-[#323232] border-0 text-white font-semibold px-8 text-neutral hover:bg-base-200 hover:text-[#323232]">Shop now</button>
+                  <Link to="/shop" className="btn rounded-sm bg-[#323232] border-0 text-white font-semibold px-8 text-neutral hover:bg-base-200 hover:text-[#323232]">Shop now</Link>
                 </div>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useProducts } from '../context/ProductContext'
 import ProductGridCard from '../components/ProductGridCard'
 
@@ -12,8 +13,24 @@ const SORT_OPTIONS = [
 
 const ShopPage = () => {
   const { products, loading, error } = useProducts()
-  const [activeCategory, setActiveCategory] = useState('All')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [manualCategory, setManualCategory] = useState('All')
   const [sortBy, setSortBy] = useState('date-old')
+
+  const urlSearchQuery = searchParams.get('q') || ''
+  // URL ?category= takes priority over manual sidebar selection
+  const urlCategory = searchParams.get('category') || ''
+  const activeCategory = urlCategory || manualCategory
+
+  const setActiveCategory = (cat) => {
+    setManualCategory(cat)
+    // Clear URL category param when user selects manually
+    if (urlCategory) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('category')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   const categories = useMemo(
     () => ['All', ...new Set(products.map((product) => product.category))],
@@ -21,10 +38,23 @@ const ShopPage = () => {
   )
 
   const visibleProducts = useMemo(() => {
-    const filtered =
-      activeCategory === 'All'
-        ? products
-        : products.filter((product) => product.category === activeCategory)
+    let filtered = products
+
+    // Apply URL search query (title / brand / category match)
+    if (urlSearchQuery) {
+      const q = urlSearchQuery.toLowerCase()
+      filtered = filtered.filter(
+        (p) =>
+          p.title?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q),
+      )
+    }
+
+    // Apply category filter (only when no ?q= search query overrides)
+    if (!urlSearchQuery && activeCategory !== 'All') {
+      filtered = filtered.filter((p) => p.category === activeCategory)
+    }
 
     const sorted = [...filtered]
     sorted.sort((a, b) => {
@@ -43,16 +73,37 @@ const ShopPage = () => {
       }
     })
     return sorted
-  }, [activeCategory, products, sortBy])
+  }, [activeCategory, urlSearchQuery, products, sortBy])
+
+  const clearSearch = () => {
+    setSearchParams({})
+    setManualCategory('All')
+  }
 
   return (
     <section className="bg-[#f5f5f5] px-4 py-12 md:py-16">
       <div className="container-custom">
         <div className="mb-8 text-center md:mb-10">
           <h1 className="text-2xl font-semibold uppercase tracking-[0.08em] text-[#222] md:text-4xl">Shop</h1>
-          <p className="mt-3 text-sm text-[#606060] md:text-base">
-            Explore our full catalog with premium curation and trend-forward picks.
-          </p>
+          {urlSearchQuery ? (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <p className="text-sm text-[#606060]">
+                Showing results for{' '}
+                <span className="font-semibold text-[#1f1f1f]">&ldquo;{urlSearchQuery}&rdquo;</span>
+                {' '}— {visibleProducts.length} product{visibleProducts.length !== 1 ? 's' : ''} found
+              </p>
+              <button
+                onClick={clearSearch}
+                className="flex items-center gap-1 rounded-full border border-[#ccc] bg-white px-3 py-1 text-xs font-medium text-[#555] transition hover:border-[#1f1f1f] hover:text-[#1f1f1f]"
+              >
+                ✕ Clear search
+              </button>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-[#606060] md:text-base">
+              Explore our full catalog with premium curation and trend-forward picks.
+            </p>
+          )}
         </div>
 
         {loading ? <p className="text-center text-sm text-neutral/60">Loading products...</p> : null}
@@ -82,11 +133,11 @@ const ShopPage = () => {
           </aside>
 
           <div>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-y border-black/15 py-3">
-              <div className="flex items-center gap-2 lg:hidden">
+            <div className="mb-5 flex md:flex-wrap items-center justify-between gap-3 border-y border-black/15 py-3">
+              <div className="flex flex-col md:flex-row items-start md:ite gap-2 lg:hidden w-full md:w-auto">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#555]">Category</span>
                 <select
-                  className="select select-bordered select-sm w-44 rounded-none bg-white text-xs"
+                  className="select select-bordered select-sm w-full md:w-44 rounded-none bg-white text-xs ps-3"
                   value={activeCategory}
                   onChange={(event) => setActiveCategory(event.target.value)}
                 >
@@ -98,10 +149,10 @@ const ShopPage = () => {
                 </select>
               </div>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex flex-col md:flex-row items-start md:ite gap-2 w-full md:w-auto">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#555]">Sort by: </span>
                 <select
-                  className="select select-bordered select-sm w-44 rounded-none bg-white text-xs ps-3"
+                  className="select select-bordered select-sm w-full md:w-44 rounded-none bg-white text-xs ps-3"
                   value={sortBy}
                   onChange={(event) => setSortBy(event.target.value)}
                 >

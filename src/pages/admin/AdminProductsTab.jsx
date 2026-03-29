@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Swal from 'sweetalert2'
-import { FiEdit2, FiGrid, FiList, FiPlus, FiSearch, FiTrash2, FiX } from 'react-icons/fi'
+import { FiChevronDown, FiEdit2, FiGrid, FiList, FiPlus, FiSearch, FiTrash2, FiUpload, FiX } from 'react-icons/fi'
 import { MdCheckCircle } from 'react-icons/md'
 import { useProducts } from '../../context/ProductContext'
+import { supabase } from '../../lib/supabase'
 
 const AdminLoader = ({ text = 'Loading...' }) => (
   <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
@@ -23,7 +24,7 @@ const emptyForm = {
 }
 
 const inputCls =
-  'w-full rounded-lg border border-[#d7dce3] bg-white px-3.5 py-2.5 text-sm text-[#202734] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#f08a2f] focus:ring-2 focus:ring-[#f08a2f]/15'
+  'w-full rounded-lg border border-[#d7dce3] bg-white px-3.5 py-2.5 text-sm text-[#202734] outline-none transition placeholder:text-[#b0b8c5] focus:border-[#f08a2f] focus:ring-2 focus:ring-[#f08a2f]/15 h-[42px]'
 
 const AdminProductsTab = () => {
   const { products, addProduct, updateProduct, deleteProduct, loading } = useProducts()
@@ -32,6 +33,13 @@ const AdminProductsTab = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState(emptyForm)
+
+  // Image upload states
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [filePreview, setFilePreview] = useState(null)
+  const [urlError, setUrlError] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
+  const imgFileRef = useRef(null)
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -44,9 +52,17 @@ const AdminProductsTab = () => {
     )
   }, [products, searchQuery])
 
+  const resetImageStates = () => {
+    setSelectedFile(null)
+    setFilePreview(null)
+    setUrlError(false)
+    setUploadProgress('')
+  }
+
   const openAdd = () => {
     setEditingId(null)
     setFormData(emptyForm)
+    resetImageStates()
     setIsModalOpen(true)
   }
 
@@ -62,6 +78,7 @@ const AdminProductsTab = () => {
       category: product.category || '',
       collection: product.collection || '',
     })
+    resetImageStates()
     setIsModalOpen(true)
   }
 
@@ -69,6 +86,36 @@ const AdminProductsTab = () => {
     setIsModalOpen(false)
     setEditingId(null)
     setFormData(emptyForm)
+    resetImageStates()
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      Swal.fire({ icon: 'error', title: 'Invalid file', text: 'Please select an image file.', confirmButtonColor: '#f08a2f' })
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({ icon: 'error', title: 'File too large', text: 'Max file size is 5MB.', confirmButtonColor: '#f08a2f' })
+      return
+    }
+    setSelectedFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setFilePreview(ev.target.result)
+    reader.readAsDataURL(file)
+    // Clear URL input when file is chosen
+    setFormData((prev) => ({ ...prev, image: '' }))
+  }
+
+  const uploadProductImage = async (file) => {
+    const ext = file.name.split('.').pop()
+    const path = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    setUploadProgress('Uploading image…')
+    const { error } = await supabase.storage.from('products').upload(path, file, { upsert: true })
+    if (error) throw new Error(error.message)
+    const { data } = supabase.storage.from('products').getPublicUrl(path)
+    return `${data.publicUrl}?t=${Date.now()}`
   }
 
   const handleChange = (e) => {
@@ -79,16 +126,30 @@ const AdminProductsTab = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      let finalData = { ...formData }
+
+      if (selectedFile) {
+        finalData.image = await uploadProductImage(selectedFile)
+      }
+
+      if (!finalData.image?.trim()) {
+        await Swal.fire({ icon: 'warning', title: 'Image required', text: 'Please provide an image URL or upload a file.', confirmButtonColor: '#f08a2f' })
+        setUploadProgress('')
+        return
+      }
+
+      setUploadProgress('Saving product…')
       if (editingId) {
-        await updateProduct(editingId, formData)
+        await updateProduct(editingId, finalData)
         await Swal.fire({ icon: 'success', title: 'Product updated', confirmButtonColor: '#f08a2f' })
       } else {
-        await addProduct(formData)
+        await addProduct(finalData)
         await Swal.fire({ icon: 'success', title: 'Product added', confirmButtonColor: '#f08a2f' })
       }
       closeModal()
-    } catch {
-      await Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not save product.', confirmButtonColor: '#323232' })
+    } catch (err) {
+      setUploadProgress('')
+      await Swal.fire({ icon: 'error', title: 'Failed', text: err.message || 'Could not save product.', confirmButtonColor: '#323232' })
     }
   }
 
@@ -296,9 +357,71 @@ const AdminProductsTab = () => {
                 <label className="mb-1 block text-xs font-medium text-[#6b7280]">Product Title</label>
                 <input name="title" value={formData.title} onChange={handleChange} className={inputCls} placeholder="Product title" required />
               </div>
+              {/* Image — URL or device upload */}
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#6b7280]">Image URL</label>
-                <input name="image" value={formData.image} onChange={handleChange} className={inputCls} placeholder="https://..." required />
+                <label className="mb-1.5 block text-xs font-medium text-[#6b7280]">Product Image</label>
+
+                {/* Preview */}
+                {(filePreview || (formData.image && !urlError)) && (
+                  <div className="mb-2.5 flex items-center gap-3 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] p-2.5">
+                    <img
+                      src={filePreview || formData.image}
+                      alt="preview"
+                      className="h-14 w-14 shrink-0 rounded-md object-cover border border-[#e5e7eb]"
+                      onError={() => setUrlError(true)}
+                      onLoad={() => setUrlError(false)}
+                    />
+                    <div className="min-w-0">
+                      {selectedFile ? (
+                        <p className="truncate text-xs font-medium text-[#202734]">{selectedFile.name}</p>
+                      ) : (
+                        <p className="truncate text-[11px] text-[#6b7280]">URL preview</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetImageStates()
+                          setFormData((prev) => ({ ...prev, image: '' }))
+                          if (imgFileRef.current) imgFileRef.current.value = ''
+                        }}
+                        className="mt-0.5 text-[11px] text-red-400 hover:text-red-600"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* URL input */}
+                <div className="flex flex-col items-center gap-2">
+                  <input
+                    name="image"
+                    value={formData.image}
+                    onChange={(e) => { handleChange(e); setUrlError(false); setSelectedFile(null); setFilePreview(null) }}
+                    disabled={!!selectedFile}
+                    className={`${inputCls} flex-1 disabled:cursor-not-allowed disabled:bg-[#f3f4f6] disabled:text-[#b0b8c5]`}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  <span className="shrink-0 text-[11px] text-[#9ca3af]">OR</span>
+                </div>
+                {formData.image && urlError && (
+                  <p className="mt-1 text-[11px] text-red-500">Could not load image from this URL.</p>
+                )}
+
+                <div className='mt-2'>
+                  {/* Upload button */}
+                  <input ref={imgFileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  <button
+                    type="button"
+                    onClick={() => imgFileRef.current?.click()}
+                    className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[#d1d5db] bg-[#f9fafb] py-2.5 text-sm text-[#6b7280] transition hover:border-[#f08a2f] hover:bg-[#fff8f2] hover:text-[#f08a2f]"
+                  >
+                    <FiUpload className="text-base" />
+                    {selectedFile ? 'Change image' : 'Upload from device'}
+                  </button>
+                </div>
+
+                
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -316,20 +439,39 @@ const AdminProductsTab = () => {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-[#6b7280]">Badge</label>
-                <select name="badgeType" value={formData.badgeType} onChange={handleChange} className={inputCls}>
-                  <option value="">No badge</option>
-                  <option value="sale">Sale</option>
-                  <option value="freeshipping">Free Shipping</option>
-                  <option value="soldout">Sold Out</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <div className="relative">
+                  <select name="badgeType" value={formData.badgeType} onChange={handleChange} className={`${inputCls} appearance-none pr-8`}>
+                    <option value="">No badge</option>
+                    <option value="sale">Sale</option>
+                    <option value="freeshipping">Free Shipping</option>
+                    <option value="soldout">Sold Out</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#9ca3af]" />
+                </div>
               </div>
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={closeModal} className="flex-1 rounded-lg border border-[#e5e7eb] py-2.5 text-sm font-semibold text-[#6b7280] transition hover:bg-[#f9fafb]">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={!!uploadProgress}
+                  className="flex-1 rounded-lg border border-[#e5e7eb] py-2.5 text-sm font-semibold text-[#6b7280] transition hover:bg-[#f9fafb] disabled:opacity-50"
+                >
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 rounded-lg bg-[#f08a2f] py-2.5 text-sm font-semibold text-white transition hover:bg-[#e07820]">
-                  {editingId ? 'Update Product' : 'Add Product'}
+                <button
+                  type="submit"
+                  disabled={!!uploadProgress}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#f08a2f] py-2.5 text-sm font-semibold text-white transition hover:bg-[#e07820] disabled:opacity-60"
+                >
+                  {uploadProgress ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      {uploadProgress}
+                    </>
+                  ) : (
+                    editingId ? 'Update Product' : 'Add Product'
+                  )}
                 </button>
               </div>
             </form>

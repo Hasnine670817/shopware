@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FiArrowUpRight, FiClock, FiShoppingCart, FiUsers } from 'react-icons/fi'
+import { FiArrowUpRight, FiChevronDown, FiClock, FiShoppingCart, FiUsers } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useProducts } from '../../context/ProductContext'
 import { supabase } from '../../lib/supabase'
@@ -27,27 +27,34 @@ const AdminDashboardTab = () => {
   const [hoveredPoint, setHoveredPoint] = useState(null)
 
   useEffect(() => {
+    let cancelled = false
     const fetchOrders = async () => {
       setLoading(true)
-      const { data } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (data) {
-        setAllOrders(data.map((row) => ({
-          orderId: row.order_id,
-          createdAt: row.created_at,
-          status: row.status,
-          items: row.items,
-          subtotal: Number(row.subtotal),
-          total: Number(row.total),
-          userEmail: row.user_email,
-          customerInfo: row.customer_info,
-        })))
+      try {
+        const { data } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+        if (!cancelled && data) {
+          setAllOrders(data.map((row) => ({
+            orderId: row.order_id,
+            createdAt: row.created_at,
+            status: row.status,
+            items: row.items,
+            subtotal: Number(row.subtotal),
+            total: Number(row.total),
+            userEmail: row.user_email,
+            customerInfo: row.customer_info,
+          })))
+        }
+      } catch (err) {
+        console.error('Dashboard fetch error:', err)
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-      setLoading(false)
     }
     fetchOrders()
+    return () => { cancelled = true }
   }, [])
 
   const stats = useMemo(() => ({
@@ -182,15 +189,18 @@ const AdminDashboardTab = () => {
               Total: <span className="font-semibold text-[#202734]">${chartData.reduce((s, d) => s + d.revenue, 0).toFixed(2)}</span> in selected period
             </p>
           </div>
-          <select
-            value={chartPeriod}
-            onChange={(e) => setChartPeriod(e.target.value)}
-            className="h-[38px] w-[150px] rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm focus:outline-none"
-          >
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="6m">Last 6 Months</option>
-          </select>
+          <div className="relative">
+            <select
+              value={chartPeriod}
+              onChange={(e) => setChartPeriod(e.target.value)}
+              className="h-[38px] w-[150px] appearance-none rounded-lg border border-[#e5e7eb] bg-white pl-3 pr-8 text-sm text-[#374151] outline-none focus:border-[#f08a2f] focus:ring-2 focus:ring-[#f08a2f]/15"
+            >
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="6m">Last 6 Months</option>
+            </select>
+            <FiChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#9ca3af]" />
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl bg-[#fbfbfc]">

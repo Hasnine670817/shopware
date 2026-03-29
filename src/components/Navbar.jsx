@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { useAdminAuth } from '../context/AdminAuthContext'
+import { useProducts } from '../context/ProductContext'
 import { MdLogout, MdOutlineDashboard } from 'react-icons/md'
 import { RiAdminLine } from 'react-icons/ri'
+import { FiSearch, FiX, FiArrowRight, FiTrendingUp } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 
 const iconClass = 'h-5 w-5 stroke-[1.8]'
@@ -17,23 +19,94 @@ const menuItems = [
 const navClass = ({ isActive }) => `transition hover:text-neutral ${isActive ? 'text-neutral' : ''}`
 
 const Navbar = () => {
+  const navigate = useNavigate()
   const { cartItems, cartCount, subtotal, increaseQuantity, decreaseQuantity, removeFromCart } = useCart()
-  const { currentUser, isAuthenticated, logout } = useAuth()
+  const { currentUser, isAuthenticated, authLoading, logout } = useAuth()
   const { isAdminAuthenticated, currentAdmin, adminLogout } = useAdminAuth()
+  const { products } = useProducts()
   const hasAccountSession = isAuthenticated || isAdminAuthenticated
-  const profileName = isAdminAuthenticated ? 'Administrator' : currentUser?.fullName
-  const profileEmail = isAdminAuthenticated ? currentAdmin?.email : currentUser?.email
+  // Always use currentUser for name & avatar (synced on every auth/profile update)
+  const profileName   = currentUser?.fullName || currentAdmin?.fullName || 'Admin'
+  const profileEmail  = currentUser?.email    || currentAdmin?.email    || ''
+  const profileAvatar = currentUser?.avatarUrl || null
+  const [avatarImgError, setAvatarImgError] = useState(false)
+  // When avatar URL changes (e.g. after profile update) reset the error flag
+  const prevAvatarRef = useRef(profileAvatar)
+  if (prevAvatarRef.current !== profileAvatar) {
+    prevAvatarRef.current = profileAvatar
+    if (avatarImgError) setAvatarImgError(false)
+  }
+  const showAvatar = profileAvatar && !avatarImgError
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const profileDropdownRef = useRef(null)
+  const searchInputRef = useRef(null)
+
+  // Search suggestions derived from products
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q || !products?.length) return []
+    return products
+      .filter(
+        (p) =>
+          p.title?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q),
+      )
+      .slice(0, 6)
+  }, [searchQuery, products])
+
+  // Unique categories for quick tags
+  const popularCategories = useMemo(() => {
+    if (!products?.length) return []
+    return [...new Set(products.map((p) => p.category).filter(Boolean))].slice(0, 6)
+  }, [products])
+
+  const openSearch = () => {
+    setIsSearchOpen(true)
+    setSearchQuery('')
+    setTimeout(() => searchInputRef.current?.focus(), 80)
+  }
+
+  const closeSearch = () => {
+    setIsSearchOpen(false)
+    setSearchQuery('')
+  }
+
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault()
+    const q = searchQuery.trim()
+    if (!q) return
+    closeSearch()
+    navigate(`/shop?q=${encodeURIComponent(q)}`)
+  }
+
+  const handleSuggestionClick = (product) => {
+    closeSearch()
+    navigate(`/shop?q=${encodeURIComponent(product.title)}`)
+  }
+
+  const handleCategoryClick = (category) => {
+    closeSearch()
+    navigate(`/shop?category=${encodeURIComponent(category)}`)
+  }
 
   useEffect(() => {
-    document.body.style.overflow = isMobileMenuOpen || isCartOpen ? 'hidden' : ''
+    document.body.style.overflow = isMobileMenuOpen || isCartOpen || isSearchOpen ? 'hidden' : ''
     return () => {
       document.body.style.overflow = ''
     }
-  }, [isMobileMenuOpen, isCartOpen])
+  }, [isMobileMenuOpen, isCartOpen, isSearchOpen])
+
+  // Close search on Escape key
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -121,7 +194,7 @@ const Navbar = () => {
                 Signup
               </NavLink>
             </div> */}
-            <button className="btn btn-ghost btn-circle btn-sm">
+            <button className="btn btn-ghost btn-circle btn-sm" onClick={openSearch} aria-label="Open search">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className={iconClass}>
                 <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.05 6.05a7.5 7.5 0 0 0 10.6 10.6Z" />
               </svg>
@@ -136,7 +209,10 @@ const Navbar = () => {
                 </span>
               ) : null}
             </button>
-            {hasAccountSession ? (
+            {/* Skeleton while auth is loading — prevents flash */}
+            {authLoading ? (
+              <span className="h-8 w-8 animate-pulse rounded-full bg-base-300" />
+            ) : hasAccountSession ? (
               <div className="relative" ref={profileDropdownRef}>
                 <button
                   className={`btn btn-circle btn-sm overflow-hidden border border-base-300 bg-base-200 font-semibold uppercase transition ${
@@ -146,7 +222,12 @@ const Navbar = () => {
                   aria-label="Open profile menu"
                   title={profileName || 'Profile'}
                 >
-                  {(profileName || 'U').slice(0, 1)}
+                  {showAvatar ? (
+                    <img src={profileAvatar} alt={profileName} className="h-full w-full object-cover"
+                      onError={() => setAvatarImgError(true)} />
+                  ) : (
+                    (profileName || 'U').slice(0, 1)
+                  )}
                 </button>
 
                 <div
@@ -158,8 +239,13 @@ const Navbar = () => {
                 >
                   <div className="rounded-xl bg-base-200 p-3">
                     <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 place-items-center rounded-full bg-neutral text-sm font-semibold text-white">
-                        {(profileName || 'U').slice(0, 1)}
+                      <span className="grid h-10 w-10 place-items-center rounded-full bg-neutral text-sm font-semibold text-white overflow-hidden">
+                        {showAvatar ? (
+                          <img src={profileAvatar} alt={profileName} className="h-full w-full object-cover"
+                            onError={() => setAvatarImgError(true)} />
+                        ) : (
+                          (profileName || 'U').slice(0, 1)
+                        )}
                       </span>
                       <div>
                         <p className="text-sm font-semibold text-neutral">{profileName}</p>
@@ -203,7 +289,8 @@ const Navbar = () => {
                   <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" d="M17.98 18.73a9 9 0 0 0-11.96 0M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 1a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
               </Link>
-            )}
+            )
+            }
 
             <button
               className="btn btn-ghost btn-circle btn-sm lg:hidden"
@@ -256,7 +343,7 @@ const Navbar = () => {
                 {item.label}
               </NavLink>
             ))}
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-base-300 pt-4">
+            {/* <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-base-300 pt-4">
               {isAdminAuthenticated ? (
                 <>
                   <NavLink to="/dashboard" className="btn btn-sm btn-ghost" onClick={() => setIsMobileMenuOpen(false)}>
@@ -300,9 +387,159 @@ const Navbar = () => {
                   </NavLink>
                 </>
               )}
-            </div>
+            </div> */}
           </nav>
         </aside>
+      </div>
+
+      {/* ───── Search Modal ───── */}
+      <div
+        className={`fixed inset-0 z-[70] flex flex-col transition-all duration-300 ${
+          isSearchOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden={!isSearchOpen}
+        role="dialog"
+        aria-label="Product search"
+      >
+        {/* Backdrop */}
+        <button
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={closeSearch}
+          aria-label="Close search"
+          tabIndex={-1}
+        />
+
+        {/* Panel */}
+        <div
+          className={`relative z-10 mx-auto w-full max-w-2xl px-4 pt-[72px] transition-all duration-300 ${
+            isSearchOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+          }`}
+        >
+          {/* Search box */}
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-2xl ring-1 ring-black/5">
+            <FiSearch className="shrink-0 text-xl text-neutral/40" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for products, brands, categories…"
+              className="flex-1 bg-transparent text-sm text-neutral outline-none placeholder:text-neutral/40 md:text-base"
+              autoComplete="off"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-base-200 text-neutral/60 transition hover:bg-base-300"
+                aria-label="Clear search"
+              >
+                <FiX className="text-sm" />
+              </button>
+            )}
+            <button
+              type="submit"
+              className="shrink-0 rounded-xl bg-neutral px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-neutral/85 hidden sm:block"
+            >
+              Search
+            </button>
+          </form>
+
+          {/* Results / Suggestions panel */}
+          <div className="mt-2 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+
+            {/* — Suggestions while typing — */}
+            {searchQuery.trim() ? (
+              searchResults.length > 0 ? (
+                <ul>
+                  {searchResults.map((product) => (
+                    <li key={product.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSuggestionClick(product)}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-base-100"
+                      >
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          className="h-11 w-11 shrink-0 rounded-xl object-cover border border-base-200"
+                          onError={(e) => { e.target.src = 'https://placehold.co/80x80?text=?' }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-neutral">{product.title}</p>
+                          <p className="text-xs text-neutral/50">{product.brand} · {product.category}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <span className="text-sm font-bold text-neutral">${Number(product.price).toFixed(2)}</span>
+                          <FiArrowRight className="text-xs text-neutral/30" />
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                  {/* View all results */}
+                  <li className="border-t border-base-200">
+                    <button
+                      type="button"
+                      onClick={handleSearchSubmit}
+                      className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-[#f08a2f] transition hover:bg-orange-50"
+                    >
+                      <span>View all results for &ldquo;{searchQuery}&rdquo;</span>
+                      <FiArrowRight />
+                    </button>
+                  </li>
+                </ul>
+              ) : (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm font-medium text-neutral/60">No products found for &ldquo;{searchQuery}&rdquo;</p>
+                  <p className="mt-1 text-xs text-neutral/40">Try a different keyword or browse categories below.</p>
+                </div>
+              )
+            ) : (
+              /* — Default: popular categories — */
+              <div className="px-4 py-4">
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-neutral/40">
+                  <FiTrendingUp />
+                  Popular Categories
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {popularCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => handleCategoryClick(cat)}
+                      className="rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-xs font-medium text-neutral/70 transition hover:border-neutral hover:bg-neutral hover:text-white"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-4 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-neutral/40">
+                  <FiSearch />
+                  Quick links
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => { closeSearch(); navigate('/shop') }}
+                    className="rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-xs font-medium text-neutral/70 transition hover:border-neutral hover:bg-neutral hover:text-white"
+                  >All Products</button>
+                  <button
+                    onClick={() => { closeSearch(); navigate('/shop?q=sale') }}
+                    className="rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-xs font-medium text-neutral/70 transition hover:border-neutral hover:bg-neutral hover:text-white"
+                  >On Sale</button>
+                  <button
+                    onClick={() => { closeSearch(); navigate('/shop?q=new') }}
+                    className="rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-xs font-medium text-neutral/70 transition hover:border-neutral hover:bg-neutral hover:text-white"
+                  >New Arrivals</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Hint */}
+          <p className="mt-2.5 text-center text-[11px] text-white/60">
+            Press <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono">Esc</kbd> to close
+          </p>
+        </div>
       </div>
 
       <div

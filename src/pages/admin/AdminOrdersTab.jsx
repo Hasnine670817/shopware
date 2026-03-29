@@ -22,7 +22,6 @@ const STATUS_CONFIG = {
 
 const ACTION_ITEMS = [
   { status: 'approved',  label: 'Mark as Approved',  icon: FiCheckCircle,         cls: 'text-[#374151]' },
-  { status: 'printing',  label: 'Mark as Printing',  icon: FiPrinter,             cls: 'text-[#374151]' },
   { status: 'shipped',   label: 'Mark as Shipped',   icon: MdOutlineLocalShipping, cls: 'text-[#374151]' },
   { status: 'delivered', label: 'Mark as Delivered', icon: MdCheckCircleOutline,  cls: 'text-emerald-600' },
   { status: 'cancelled', label: 'Cancel Order',      icon: FiXCircle,             cls: 'text-red-500' },
@@ -81,24 +80,29 @@ const AdminOrdersTab = () => {
 
   const loadOrders = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (data) {
-      setOrders(data.map((row) => ({
-        orderId: row.order_id,
-        createdAt: row.created_at,
-        status: row.status,
-        items: row.items,
-        subtotal: Number(row.subtotal),
-        total: Number(row.total),
-        userEmail: row.user_email,
-        customerInfo: row.customer_info,
-        paymentInfo: row.payment_info,
-      })))
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (data) {
+        setOrders(data.map((row) => ({
+          orderId: row.order_id,
+          createdAt: row.created_at,
+          status: row.status,
+          items: row.items,
+          subtotal: Number(row.subtotal),
+          total: Number(row.total),
+          userEmail: row.user_email,
+          customerInfo: row.customer_info,
+          paymentInfo: row.payment_info,
+        })))
+      }
+    } catch (err) {
+      console.error('Orders fetch error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => {

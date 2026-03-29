@@ -11,6 +11,7 @@ const mapUser = (row) => ({
   role: row.role,
   blocked: row.blocked,
   createdAt: row.created_at,
+  avatarUrl: row.avatar_url || null,
 })
 
 export const AuthProvider = ({ children }) => {
@@ -131,6 +132,27 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(user)
   }
 
+  const updateProfile = async ({ fullName, avatarUrl }) => {
+    if (!currentUser?.id) return { ok: false, message: 'Not logged in.' }
+    const updates = {}
+    if (fullName?.trim()) updates.full_name = fullName.trim()
+    if (avatarUrl !== undefined) updates.avatar_url = avatarUrl || null
+
+    const { error } = await supabase.from('users').update(updates).eq('id', currentUser.id)
+    if (error) {
+      console.error('Update profile error:', error)
+      return { ok: false, message: error.message }
+    }
+    const updated = {
+      ...currentUser,
+      fullName:  'full_name'  in updates ? updates.full_name  : currentUser.fullName,
+      avatarUrl: 'avatar_url' in updates ? updates.avatar_url : currentUser.avatarUrl,
+    }
+    setCurrentUser(updated)
+    await loadUsers()
+    return { ok: true, user: updated }
+  }
+
   const deleteUser = async (userId) => {
     const { error } = await supabase.from('users').delete().eq('id', userId)
     if (error) { console.error('Delete user error:', error); return }
@@ -153,6 +175,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     setSessionUser,
+    updateProfile,
     deleteUser,
     toggleBlockUser,
     isAuthenticated: Boolean(currentUser),

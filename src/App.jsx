@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout'
+import TopProgressBar from './components/TopProgressBar'
 import CollectionPage from './pages/CollectionPage'
 import ContactPage from './pages/ContactPage'
 import CheckoutPage from './pages/CheckoutPage'
@@ -17,7 +19,18 @@ import UserDashboardPage from './pages/UserDashboardPage'
 import ProtectedAdminRoute from './components/ProtectedAdminRoute'
 
 const App = () => {
+  // Hide splash screen once React has mounted
+  useEffect(() => {
+    const splash = document.getElementById('app-splash')
+    if (!splash) return
+    splash.classList.add('splash-hide')
+    const t = setTimeout(() => splash.remove(), 480)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
+    <>
+    <TopProgressBar />
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<HomePage />} />
@@ -44,6 +57,7 @@ const App = () => {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
 
