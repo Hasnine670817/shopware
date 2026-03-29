@@ -33,15 +33,15 @@ const App = () => {
         <Route path="/dashboard" element={<UserDashboardPage />} />
         <Route path="/dashboard/orders" element={<AllOrdersPage />} />
         <Route path="/dashboard/orders/:orderId" element={<OrderDetailsPage />} />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedAdminRoute>
-              <AdminPanelPage />
-            </ProtectedAdminRoute>
-          }
-        />
       </Route>
+      <Route
+        path="/admin"
+        element={
+          <ProtectedAdminRoute>
+            <AdminPanelPage />
+          </ProtectedAdminRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -61,7 +61,7 @@ const Navbar = () => {
     })
 
     if (result.isConfirmed) {
-      logout()
+      await logout()
       setIsProfileDropdownOpen(false)
       await Swal.fire({
         icon: 'success',
@@ -82,8 +82,7 @@ const Navbar = () => {
     })
 
     if (result.isConfirmed) {
-      adminLogout()
-      logout()
+      await adminLogout()
       setIsProfileDropdownOpen(false)
       await Swal.fire({
         icon: 'success',

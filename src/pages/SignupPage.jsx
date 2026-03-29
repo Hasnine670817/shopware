@@ -20,7 +20,7 @@ const SignupPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const result = signup(formData)
+    const result = await signup(formData)
 
     if (!result.ok) {
       await Swal.fire({

@@ -26,7 +26,7 @@ const CheckoutInfoPage = () => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmitOrder = (event) => {
+  const handleSubmitOrder = async (event) => {
     event.preventDefault()
 
     const customerInfo = {
@@ -43,7 +43,7 @@ const CheckoutInfoPage = () => {
       cardNumber: paymentMethod === 'card' ? formData.cardNumber : '',
     }
 
-    const order = placeOrder({ customerInfo, paymentInfo })
+    const order = await placeOrder({ customerInfo, paymentInfo })
     if (order) {
       navigate('/order-confirmation')
     }

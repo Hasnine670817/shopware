@@ -31,7 +31,7 @@ const UserDashboardPage = () => {
     })
 
     if (result.isConfirmed) {
-      logout()
+      await logout()
       await Swal.fire({
         icon: 'success',
         title: 'Logged out',

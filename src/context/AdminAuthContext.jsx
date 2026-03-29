@@ -1,68 +1,91 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState } from 'react'
-
-const ADMIN_SESSION_KEY = 'shopware_admin_session'
-const ADMIN_USER_KEY = 'shopware_admin_user'
-const ADMIN_EMAIL = 'admin@shopware.com'
-const ADMIN_PASSWORD = 'Admin@12345'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 const AdminAuthContext = createContext(null)
 
-const getStoredAdminSession = () => {
-  try {
-    return JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || 'false')
-  } catch {
-    return false
-  }
-}
-
-const getStoredAdminUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem(ADMIN_USER_KEY) || 'null')
-  } catch {
-    return null
-  }
-}
-
 export const AdminAuthProvider = ({ children }) => {
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(getStoredAdminSession)
-  const [currentAdmin, setCurrentAdmin] = useState(getStoredAdminUser)
+  const [currentAdmin, setCurrentAdmin] = useState(null)
 
-  const adminLogin = ({ email, password }) => {
-    const valid =
-      email.trim().toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD
+  // Restore admin session from Supabase Auth on mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return
 
-    if (!valid) {
-      return { ok: false, message: 'Invalid admin email or password.' }
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .eq('role', 'admin')
+        .maybeSingle()
+
+      if (userData) {
+        setCurrentAdmin({
+          id: userData.id,
+          fullName: userData.full_name,
+          email: userData.email,
+          role: 'admin',
+        })
+      }
+    }
+    restoreSession()
+
+    // Listen for sign-out to clear admin state
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') setCurrentAdmin(null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const adminLogin = async ({ email, password }) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+
+    if (error) {
+      console.error('Admin login error:', error)
+      return { ok: false, message: 'Invalid email or password.' }
     }
 
-    const adminUser = {
-      email: ADMIN_EMAIL,
-      role: 'Super Admin',
+    const { data: userData } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .eq('role', 'admin')
+      .maybeSingle()
+
+    if (!userData) {
+      await supabase.auth.signOut()
+      return { ok: false, message: 'This account does not have admin privileges.' }
     }
 
-    setIsAdminAuthenticated(true)
-    localStorage.setItem(ADMIN_SESSION_KEY, 'true')
-    setCurrentAdmin(adminUser)
-    localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser))
-    return { ok: true, admin: adminUser }
+    const admin = {
+      id: userData.id,
+      fullName: userData.full_name,
+      email: userData.email,
+      role: 'admin',
+    }
+    setCurrentAdmin(admin)
+    return { ok: true, admin }
   }
 
-  const adminLogout = () => {
-    setIsAdminAuthenticated(false)
+  const adminLogout = async () => {
+    await supabase.auth.signOut()
     setCurrentAdmin(null)
-    localStorage.removeItem(ADMIN_SESSION_KEY)
-    localStorage.removeItem(ADMIN_USER_KEY)
   }
 
   const value = {
-    isAdminAuthenticated,
+    isAdminAuthenticated: Boolean(currentAdmin),
     currentAdmin,
+    setCurrentAdmin,
     adminLogin,
     adminLogout,
     adminCredentialsHint: {
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
+      email: 'admin@shopware.com',
+      password: 'Admin@12345',
     },
   }
 
@@ -71,8 +94,6 @@ export const AdminAuthProvider = ({ children }) => {
 
 export const useAdminAuth = () => {
   const context = useContext(AdminAuthContext)
-  if (!context) {
-    throw new Error('useAdminAuth must be used within AdminAuthProvider.')
-  }
+  if (!context) throw new Error('useAdminAuth must be used within AdminAuthProvider.')
   return context
 }

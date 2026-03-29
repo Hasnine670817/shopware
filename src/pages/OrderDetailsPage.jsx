@@ -22,7 +22,7 @@ const OrderDetailsPage = () => {
         <div className="container-custom">
           <div className="rounded-xl border border-[#d9dde3] bg-white p-8 text-center shadow-sm">
             <p className="text-sm text-[#5f6f85]">Please login to view order details.</p>
-            <Link to="/login" className="btn btn-neutral mt-4">Go to Login</Link>
+            <Link to="/login" className="btn text-white bg-[#323232] hover:bg-[#323232]/90 mt-4">Go to Login</Link>
           </div>
         </div>
       </section>

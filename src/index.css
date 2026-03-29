@@ -18,5 +18,5 @@ body,
 
 
 body {
-  @apply bg-base-100 font-sans text-neutral antialiased;
+  @apply bg-base-100 font-sans text-neutral antialiased min-h-screen;
 }

@@ -62,7 +62,7 @@ const Footer = () => {
 
   const handleAdminSubmit = async (event) => {
     event.preventDefault()
-    const result = adminLogin(adminForm)
+    const result = await adminLogin(adminForm)
 
     if (!result.ok) {
       await Swal.fire({
@@ -76,7 +76,7 @@ const Footer = () => {
 
     await Swal.fire({
       icon: 'success',
-      title: 'Welcome Admin',
+      title: 'Welcome Admin!',
       confirmButtonColor: '#323232',
     })
     setIsAdminModalOpen(false)

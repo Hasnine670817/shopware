@@ -1,18 +1,14 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { useAuth } from '../context/AuthContext'
 import { useAdminAuth } from '../context/AdminAuthContext'
 
 const LoginPage = () => {
   const navigate = useNavigate()
-  const { login, setSessionUser } = useAuth()
+  const { login } = useAuth()
   const { adminLogin } = useAdminAuth()
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  })
+  const [formData, setFormData] = useState({ email: '', password: '' })
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -21,14 +17,29 @@ const LoginPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const result = login(formData)
-    const adminResult = !result.ok ? adminLogin(formData) : null
 
-    if (!result.ok && !adminResult?.ok) {
+    // Try admin login first (checks role = 'admin' in Supabase)
+    const adminResult = await adminLogin(formData)
+
+    if (adminResult.ok) {
+      await Swal.fire({
+        icon: 'success',
+        title: 'Welcome Admin!',
+        text: 'Redirecting to Admin Panel...',
+        confirmButtonColor: '#323232',
+      })
+      navigate('/admin')
+      return
+    }
+
+    // Try regular user login
+    const result = await login(formData)
+
+    if (!result.ok) {
       await Swal.fire({
         icon: 'error',
         title: 'Login failed',
-        text: result.message || adminResult?.message,
+        text: result.message,
         confirmButtonColor: '#323232',
       })
       return
@@ -37,21 +48,11 @@ const LoginPage = () => {
     await Swal.fire({
       icon: 'success',
       title: 'Login successful!',
-      text: adminResult?.ok
-        ? 'Welcome back, Administrator.'
-        : `Welcome back, ${result.user.fullName}.`,
+      text: `Welcome back, ${result.user.fullName}!`,
       confirmButtonColor: '#323232',
     })
 
-    if (adminResult?.ok) {
-      setSessionUser({
-        id: 0,
-        fullName: 'Administrator',
-        email: adminResult.admin.email,
-      })
-    }
-
-    navigate(adminResult?.ok ? '/admin' : '/')
+    navigate('/')
   }
 
   return (
@@ -86,7 +87,10 @@ const LoginPage = () => {
                 required
               />
             </div>
-            <button type="submit" className="btn btn-neutral w-full bg-[#323232] text-white shadow-none font-semibold hover:bg-[#323232]/90 transition-all duration-300">
+            <button
+              type="submit"
+              className="btn btn-neutral w-full bg-[#323232] text-white shadow-none font-semibold hover:bg-[#323232]/90 transition-all duration-300"
+            >
               Sign In
             </button>
           </form>

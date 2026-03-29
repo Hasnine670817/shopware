@@ -1,236 +1,152 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Swal from 'sweetalert2'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  FiBox,
+  FiLogOut,
+  FiMenu,
+  FiPackage,
+  FiSearch,
+  FiSettings,
+  FiShoppingCart,
+  FiUsers,
+} from 'react-icons/fi'
+import { LuLayoutDashboard } from 'react-icons/lu'
+import { IoHomeOutline } from 'react-icons/io5'
 import { useAdminAuth } from '../context/AdminAuthContext'
-import { useProducts } from '../context/ProductContext'
+import AdminDashboardTab from './admin/AdminDashboardTab'
+import AdminProductsTab from './admin/AdminProductsTab'
+import AdminOrdersTab from './admin/AdminOrdersTab'
+import AdminUsersTab from './admin/AdminUsersTab'
+import AdminSettingsTab from './admin/AdminSettingsTab'
 
-const emptyForm = {
-  brand: '',
-  title: '',
-  price: '',
-  compareAtPrice: '',
-  image: '',
-  badgeType: '',
-  category: '',
-  collection: '',
-}
+const sidebarItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: LuLayoutDashboard },
+  { id: 'products', label: 'Products', icon: FiPackage },
+  { id: 'orders', label: 'Orders', icon: FiShoppingCart },
+  { id: 'users', label: 'Users', icon: FiUsers },
+  { id: 'settings', label: 'Settings', icon: FiSettings },
+]
 
 const AdminPanelPage = () => {
   const navigate = useNavigate()
-  const { adminLogout } = useAdminAuth()
-  const { products, addProduct, updateProduct, deleteProduct } = useProducts()
-  const [editingId, setEditingId] = useState(null)
-  const [formData, setFormData] = useState(emptyForm)
-
-  const stats = useMemo(
-    () => ({
-      products: products.length,
-      categories: new Set(products.map((p) => p.category)).size,
-      collections: new Set(products.map((p) => p.collection)).size,
-    }),
-    [products],
-  )
-
-  const handleChange = (event) => {
-    const { name, value } = event.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-
-    if (editingId) {
-      updateProduct(editingId, formData)
-      await Swal.fire({
-        icon: 'success',
-        title: 'Product updated',
-        confirmButtonColor: '#323232',
-      })
-    } else {
-      addProduct(formData)
-      await Swal.fire({
-        icon: 'success',
-        title: 'Product added',
-        confirmButtonColor: '#323232',
-      })
-    }
-
-    setEditingId(null)
-    setFormData(emptyForm)
-  }
-
-  const handleEdit = (product) => {
-    setEditingId(product.id)
-    setFormData({
-      brand: product.brand || '',
-      title: product.title || '',
-      price: product.price ?? '',
-      compareAtPrice: product.compareAtPrice ?? '',
-      image: product.image || '',
-      badgeType: product.badgeType || '',
-      category: product.category || '',
-      collection: product.collection || '',
-    })
-  }
-
-  const handleDelete = async (productId) => {
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: 'Delete product?',
-      text: 'This action cannot be undone.',
-      showCancelButton: true,
-      confirmButtonText: 'Delete',
-      confirmButtonColor: '#dc2626',
-    })
-
-    if (result.isConfirmed) {
-      deleteProduct(productId)
-      await Swal.fire({
-        icon: 'success',
-        title: 'Deleted',
-        confirmButtonColor: '#323232',
-      })
-    }
-  }
+  const { adminLogout, currentAdmin } = useAdminAuth()
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const handleAdminLogout = async () => {
-    adminLogout()
-    await Swal.fire({
-      icon: 'success',
-      title: 'Logged out',
-      confirmButtonColor: '#323232',
-    })
+    await adminLogout()
+    await Swal.fire({ icon: 'success', title: 'Logged out', confirmButtonColor: '#323232' })
     navigate('/')
   }
 
+  const renderContent = () => {
+    if (activeTab === 'products') return <AdminProductsTab />
+    if (activeTab === 'orders') return <AdminOrdersTab />
+    if (activeTab === 'users') return <AdminUsersTab />
+    if (activeTab === 'settings') return <AdminSettingsTab />
+    return <AdminDashboardTab />
+  }
+
   return (
-    <section className="bg-[#f5f5f5] py-10 md:py-14">
-      <div className="container-custom space-y-6">
-        <div className="rounded-2xl bg-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold text-neutral md:text-3xl">Admin Panel</h1>
-              <p className="mt-1 text-sm text-neutral/60">Manage products with secure admin access.</p>
-            </div>
-            <button className="btn btn-outline" onClick={handleAdminLogout}>
-              Logout
-            </button>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <article className="rounded-xl bg-base-200 p-4">
-              <p className="text-xs uppercase text-neutral/50">Total Products</p>
-              <p className="mt-1 text-2xl font-semibold text-neutral">{stats.products}</p>
-            </article>
-            <article className="rounded-xl bg-base-200 p-4">
-              <p className="text-xs uppercase text-neutral/50">Categories</p>
-              <p className="mt-1 text-2xl font-semibold text-neutral">{stats.categories}</p>
-            </article>
-            <article className="rounded-xl bg-base-200 p-4">
-              <p className="text-xs uppercase text-neutral/50">Collections</p>
-              <p className="mt-1 text-2xl font-semibold text-neutral">{stats.collections}</p>
-            </article>
-          </div>
+    <section className="min-h-screen bg-[#f5f7fb]">
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] overflow-y-auto bg-[#181b22] text-white transition-transform duration-300 ease-in-out lg:z-30 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="border-b border-white/10 px-5 py-5">
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <span className="rounded bg-[#ff7a1a] px-2 py-1 text-xs font-bold">S</span>
+            Admin Panel
+          </h1>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[360px_auto]">
-          <article className="rounded-2xl bg-white p-6 shadow-sm md:p-8">
-            <h2 className="text-base font-semibold text-neutral">
-              {editingId ? 'Update Product' : 'Add New Product'}
-            </h2>
-            <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-              <input name="brand" value={formData.brand} onChange={handleChange} className="input input-bordered w-full" placeholder="Brand" required />
-              <input name="title" value={formData.title} onChange={handleChange} className="input input-bordered w-full" placeholder="Title" required />
-              <input name="image" value={formData.image} onChange={handleChange} className="input input-bordered w-full" placeholder="Image URL" required />
-              <div className="grid grid-cols-2 gap-3">
-                <input name="price" type="number" value={formData.price} onChange={handleChange} className="input input-bordered w-full" placeholder="Price" required />
-                <input name="compareAtPrice" type="number" value={formData.compareAtPrice} onChange={handleChange} className="input input-bordered w-full" placeholder="Compare At" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input name="category" value={formData.category} onChange={handleChange} className="input input-bordered w-full" placeholder="Category" required />
-                <input name="collection" value={formData.collection} onChange={handleChange} className="input input-bordered w-full" placeholder="Collection" required />
-              </div>
-              <select
-                name="badgeType"
-                value={formData.badgeType}
-                onChange={handleChange}
-                className="select select-bordered w-full"
-              >
-                <option value="">Badge (optional)</option>
-                <option value="sale">Sale</option>
-                <option value="freeshipping">Free Shipping</option>
-                <option value="soldout">Sold Out</option>
-                <option value="custom">Custom</option>
-              </select>
-              <div className="flex gap-2 pt-2">
-                <button type="submit" className="btn btn-neutral flex-1">
-                  {editingId ? 'Update' : 'Add Product'}
+        <nav className="flex h-[calc(100vh-70px)] flex-col space-y-1 p-3">
+          <Link
+            to="/"
+            className="mb-4 flex items-center gap-2 rounded-lg px-3 py-3 text-[15px] text-[#2F82FF] transition hover:bg-white/10 hover:text-white"
+          >
+            <IoHomeOutline className="text-[17px]" />
+            Back to Home
+          </Link>
+
+          <div className="flex grow flex-col gap-2">
+            {sidebarItems.map((item) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false) }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[15px] transition ${
+                    activeTab === item.id
+                      ? 'bg-[#ff7a1a] text-white'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <Icon className="text-[17px]" />
+                  {item.label}
                 </button>
-                {editingId ? (
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={() => {
-                      setEditingId(null)
-                      setFormData(emptyForm)
-                    }}
-                  >
-                    Cancel
-                  </button>
-                ) : null}
+              )
+            })}
+          </div>
+
+          <button
+            onClick={handleAdminLogout}
+            className="mt-5 flex w-full items-center gap-2 rounded-lg bg-red-500/10 px-3 py-3 text-left text-[15px] text-red-300 transition hover:bg-red-500/15 hover:text-red-200"
+          >
+            <FiLogOut className="text-[17px]" />
+            Logout
+          </button>
+        </nav>
+      </aside>
+
+      {/* Overlay */}
+      <button
+        className={`fixed inset-0 z-40 bg-black/40 lg:hidden transition-opacity duration-300 ${
+          isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsSidebarOpen(false)}
+        aria-label="Close admin sidebar overlay"
+      />
+
+      {/* Main content */}
+      <div className="min-w-0 lg:ml-[260px]">
+        {/* Topbar */}
+        <div className="sticky top-0 z-20 border-b border-[#e6e9ee] bg-white px-4 py-3.5 md:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button className="btn btn-ghost btn-sm lg:hidden" onClick={() => setIsSidebarOpen(true)}>
+                <FiMenu className="text-2xl" />
+              </button>
+              <label className="hidden h-[38px] min-w-[220px] items-center gap-2 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm text-[#6b7280] sm:flex md:min-w-[340px]">
+                <FiSearch className="text-base" />
+                <input
+                  type="text"
+                  placeholder="Search orders, products, users..."
+                  className="w-full bg-transparent outline-none placeholder:text-[#9ca3af]"
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-[#eceff4] text-[#1f2937]">
+                <FiBox />
+              </span>
+              <span className="h-[30px] w-px border-r border-gray-200" />
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-semibold text-[#202734]">{currentAdmin?.fullName}</p>
+                <p className="text-xs text-[#8b95a4]">{currentAdmin?.email}</p>
               </div>
-            </form>
-          </article>
-
-          <article className="rounded-2xl bg-white p-4 shadow-sm md:p-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-neutral">Products</h2>
-              <span className="text-xs text-neutral/60">{products.length} items</span>
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1f2937] text-sm font-semibold text-white">
+                A
+              </span>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="table table-zebra">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Price</th>
-                    <th>Category</th>
-                    <th>Collection</th>
-                    <th className="text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((product) => (
-                    <tr key={product.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <img src={product.image} alt={product.brand} className="h-10 w-8 rounded object-cover" />
-                          <div>
-                            <p className="text-xs uppercase text-neutral/50">{product.brand}</p>
-                            <p className="line-clamp-1 text-sm">{product.title}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td>${Number(product.price).toFixed(2)}</td>
-                      <td>{product.category}</td>
-                      <td>{product.collection}</td>
-                      <td>
-                        <div className="flex justify-end gap-2">
-                          <button className="btn btn-xs btn-outline" onClick={() => handleEdit(product)}>
-                            Edit
-                          </button>
-                          <button className="btn btn-xs btn-error text-white" onClick={() => handleDelete(product.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
+          </div>
         </div>
+
+        <div className="p-4 md:p-6">{renderContent()}</div>
       </div>
     </section>
   )
