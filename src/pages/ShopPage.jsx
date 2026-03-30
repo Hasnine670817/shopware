@@ -106,8 +106,7 @@ const ShopPage = () => {
           )}
         </div>
 
-        {loading ? <p className="text-center text-sm text-neutral/60">Loading products...</p> : null}
-        {error ? <p className="text-center text-sm text-red-500">{error}</p> : null}
+
 
         <div className="grid gap-6 lg:grid-cols-[240px_auto]">
           <aside className="hidden self-start bg-[#efefef] p-5 lg:block sticky top-[110px]">
@@ -118,11 +117,10 @@ const ShopPage = () => {
               {categories.map((category) => (
                 <li key={category}>
                   <button
-                    className={`w-full text-left text-xs transition ${
-                      activeCategory === category
-                        ? 'font-semibold text-[#1f1f1f]'
-                        : 'text-[#5f5f5f] hover:text-[#1f1f1f]'
-                    }`}
+                    className={`w-full text-left text-xs transition ${activeCategory === category
+                      ? 'font-semibold text-[#1f1f1f]'
+                      : 'text-[#5f5f5f] hover:text-[#1f1f1f]'
+                      }`}
                     onClick={() => setActiveCategory(category)}
                   >
                     {category}
@@ -134,7 +132,7 @@ const ShopPage = () => {
 
           <div>
             <div className="mb-5 flex md:flex-wrap items-center justify-between gap-3 border-y border-black/15 py-3">
-              <div className="flex flex-col md:flex-row items-start md:ite gap-2 lg:hidden w-full md:w-auto">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 lg:hidden w-full md:w-auto">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#555]">Category</span>
                 <select
                   className="select select-bordered select-sm w-full md:w-44 rounded-none bg-white text-xs ps-3"
@@ -149,7 +147,8 @@ const ShopPage = () => {
                 </select>
               </div>
 
-              <div className="ml-auto flex flex-col md:flex-row items-start md:ite gap-2 w-full md:w-auto">
+
+              <div className="ml-auto flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-[#555]">Sort by: </span>
                 <select
                   className="select select-bordered select-sm w-full md:w-44 rounded-none bg-white text-xs ps-3"
@@ -164,6 +163,12 @@ const ShopPage = () => {
                 </select>
               </div>
             </div>
+
+            {loading ? <p className="text-center text-sm text-neutral/60">
+              <span className="loading loading-spinner loading-xl"></span> <br />
+              Loading products...
+            </p> : null}
+            {error ? <p className="text-center text-sm text-red-500">{error}</p> : null}
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 md:gap-6">
               {visibleProducts.map((product, index) => (

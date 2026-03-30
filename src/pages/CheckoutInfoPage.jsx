@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import Swal from 'sweetalert2'
 import { useCart } from '../context/CartContext'
 
 const formatPrice = (price) => `$${Number(price).toFixed(2)}`
@@ -8,6 +9,7 @@ const CheckoutInfoPage = () => {
   const navigate = useNavigate()
   const { cartItems, subtotal, placeOrder } = useCart()
   const [paymentMethod, setPaymentMethod] = useState('card')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -28,6 +30,8 @@ const CheckoutInfoPage = () => {
 
   const handleSubmitOrder = async (event) => {
     event.preventDefault()
+    if (isSubmitting) return
+    setIsSubmitting(true)
 
     const customerInfo = {
       fullName: formData.fullName,
@@ -43,9 +47,34 @@ const CheckoutInfoPage = () => {
       cardNumber: paymentMethod === 'card' ? formData.cardNumber : '',
     }
 
-    const order = await placeOrder({ customerInfo, paymentInfo })
-    if (order) {
-      navigate('/order-confirmation')
+    try {
+      const order = await placeOrder({ customerInfo, paymentInfo })
+      if (order) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Order placed successfully',
+          text: 'Preparing your confirmation...',
+          timer: 900,
+          showConfirmButton: false,
+        })
+        navigate('/order-confirmation', { replace: true })
+        return
+      }
+      await Swal.fire({
+        icon: 'error',
+        title: 'Order failed',
+        text: 'Could not place your order. Please try again.',
+        confirmButtonColor: '#323232',
+      })
+    } catch {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Something went wrong',
+        text: 'Please try again in a moment.',
+        confirmButtonColor: '#323232',
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -238,8 +267,19 @@ const CheckoutInfoPage = () => {
                 <span className="text-lg font-bold text-neutral">{formatPrice(subtotal)}</span>
               </div>
             </div>
-            <button type="submit" className="btn btn-neutral mt-6 w-full bg-[#323232] text-white shadow-none hover:bg-[#323232]/90">
-              Place Order
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="btn btn-neutral mt-6 w-full bg-[#323232] text-white shadow-none hover:bg-[#323232]/90 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Processing...
+                </span>
+              ) : (
+                'Place Order'
+              )}
             </button>
           </aside>
         </form>

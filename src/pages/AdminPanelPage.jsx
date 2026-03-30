@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Swal from 'sweetalert2'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  FiBox,
+  FiArrowRight,
   FiLogOut,
   FiMenu,
   FiPackage,
@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fi'
 import { LuLayoutDashboard } from 'react-icons/lu'
 import { IoHomeOutline } from 'react-icons/io5'
+import { IoMdNotificationsOutline } from 'react-icons/io'
 import { useAdminAuth } from '../context/AdminAuthContext'
 import { useAuth } from '../context/AuthContext'
 import { useProducts } from '../context/ProductContext'
@@ -23,7 +24,37 @@ import AdminProductsTab from './admin/AdminProductsTab'
 import AdminOrdersTab from './admin/AdminOrdersTab'
 import AdminUsersTab from './admin/AdminUsersTab'
 import AdminSettingsTab from './admin/AdminSettingsTab'
-import { IoMdNotificationsOutline } from 'react-icons/io'
+
+// ── Notification helpers ──────────────────────────────────────────────────────
+const STORAGE_KEY = 'admin_read_notif_ids'
+
+const getReadIds = () => {
+  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')) }
+  catch { return new Set() }
+}
+const saveReadIds = (set) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]))
+}
+
+const STATUS_STYLES = {
+  pending:    'bg-amber-50  text-amber-600',
+  processing: 'bg-blue-50   text-blue-600',
+  shipped:    'bg-indigo-50 text-indigo-600',
+  delivered:  'bg-emerald-50 text-emerald-600',
+  cancelled:  'bg-red-50    text-red-600',
+}
+
+const timeAgo = (iso) => {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1)  return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LuLayoutDashboard },
@@ -57,6 +88,80 @@ const AdminPanelPage = () => {
 
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  // ── Notification state ──────────────────────────────────────────────────────
+  const [isNotifOpen, setIsNotifOpen]   = useState(false)
+  const [notifications, setNotifications] = useState([])  // recent orders
+  const [readIds, setReadIds]           = useState(getReadIds)
+  const notifRef = useRef(null)
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !readIds.has(n.order_id)).length,
+    [notifications, readIds],
+  )
+
+  const loadNotifications = async () => {
+    const { data } = await supabase
+      .from('orders')
+      .select('order_id, user_email, status, total, created_at, customer_info')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (data) setNotifications(data)
+  }
+
+  // Initial fetch
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('orders')
+      .select('order_id, user_email, status, total, created_at, customer_info')
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => { if (!cancelled && data) setNotifications(data) })
+    return () => { cancelled = true }
+  }, [])
+
+  // Realtime: listen for new / updated orders
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-notif-orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => { loadNotifications() },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  // Close notif panel on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const openNotifications = () => {
+    setIsNotifOpen((prev) => !prev)
+  }
+
+  const markAllRead = () => {
+    const newSet = new Set([...readIds, ...notifications.map((n) => n.order_id)])
+    setReadIds(newSet)
+    saveReadIds(newSet)
+  }
+
+  const markOneRead = (orderId) => {
+    if (readIds.has(orderId)) return
+    const newSet = new Set([...readIds, orderId])
+    setReadIds(newSet)
+    saveReadIds(newSet)
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
@@ -229,7 +334,7 @@ const AdminPanelPage = () => {
         </nav>
       </aside>
 
-      {/* Overlay */}
+      {/* Sidebar Overlay */}
       <button
         className={`fixed inset-0 z-40 bg-black/40 lg:hidden transition-opacity duration-300 ${
           isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -238,10 +343,20 @@ const AdminPanelPage = () => {
         aria-label="Close admin sidebar overlay"
       />
 
+      {/* Notification backdrop (mobile only) — z-[44] stays below topbar z-[48] */}
+      <button
+        className={`fixed inset-0 z-[44] bg-black/30 sm:hidden transition-opacity duration-200 ${
+          isNotifOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsNotifOpen(false)}
+        aria-label="Close notifications"
+        tabIndex={-1}
+      />
+
       {/* Main content */}
       <div className="min-w-0 lg:ml-[260px]">
         {/* Topbar */}
-        <div className="sticky top-0 z-20 border-b border-[#e6e9ee] bg-white px-4 py-3.5 md:px-6">
+        <div className="sticky top-0 z-[48] border-b border-[#e6e9ee] bg-white px-4 py-3.5 md:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button className="btn btn-ghost btn-sm lg:hidden" onClick={() => setIsSidebarOpen(true)}>
@@ -324,10 +439,147 @@ const AdminPanelPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-[#eceff4] text-[#1f2937] cursor-pointer">
-                <IoMdNotificationsOutline className='text-xl' />
-              </span>
+            <div className="flex items-center gap-3" ref={notifRef}>
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={openNotifications}
+                  className={`relative grid h-9 w-9 place-items-center rounded-full transition ${
+                    isNotifOpen ? 'bg-[#f08a2f]/15 text-[#f08a2f]' : 'bg-[#eceff4] text-[#1f2937] hover:bg-[#e2e6ed]'
+                  }`}
+                  aria-label="Notifications"
+                >
+                  <IoMdNotificationsOutline className="text-xl" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification offcanvas / dropdown */}
+                <div
+                  className={`absolute right-0 top-[calc(100%+10px)] z-50 w-[340px] max-sm:fixed max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:w-full max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:z-[46] rounded-2xl border border-[#e5e7eb] bg-white shadow-2xl transition-all duration-200 ${
+                    isNotifOpen
+                      ? 'pointer-events-auto translate-y-0 opacity-100 scale-100'
+                      : 'pointer-events-none -translate-y-2 opacity-0 scale-95 max-sm:translate-y-4'
+                  }`}
+                  style={{ maxHeight: '480px' }}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-[#f0f2f5] px-4 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-[#202734]">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllRead}
+                          className="text-[11px] font-medium text-[#f08a2f] transition hover:underline"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setIsNotifOpen(false)}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-[#9ca3af] transition hover:bg-[#f3f4f6] hover:text-[#202734]"
+                      >
+                        <FiX className="text-sm" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <ul className="overflow-y-auto" style={{ maxHeight: '370px' }}>
+                    {notifications.length === 0 ? (
+                      <li className="flex flex-col items-center gap-2 py-10 text-center">
+                        <IoMdNotificationsOutline className="text-3xl text-[#d1d5db]" />
+                        <p className="text-sm text-[#9ca3af]">No notifications yet</p>
+                      </li>
+                    ) : (
+                      notifications.map((notif) => {
+                        const isUnread = !readIds.has(notif.order_id)
+                        const customerName =
+                          notif.customer_info?.fullName ||
+                          notif.customer_info?.name ||
+                          notif.user_email ||
+                          'Customer'
+                        return (
+                          <li key={notif.order_id}>
+                            <button
+                              onClick={() => {
+                                markOneRead(notif.order_id)
+                                setActiveTab('orders')
+                                setIsNotifOpen(false)
+                              }}
+                              className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-[#f9fafb] ${
+                                isUnread ? 'bg-[#fff8f2]' : ''
+                              }`}
+                            >
+                              {/* Icon */}
+                              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#f08a2f]/10 text-[#f08a2f]">
+                                <FiShoppingCart className="text-base" />
+                              </span>
+
+                              {/* Content */}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-[13px] font-semibold text-[#202734]">
+                                  New order from{' '}
+                                  <span className="text-[#f08a2f]">{customerName}</span>
+                                </p>
+                                <p className="mt-0.5 truncate text-xs text-[#8b95a4]">
+                                  #{notif.order_id?.replace('ORD-', '')} ·{' '}
+                                  <span className="font-medium text-[#202734]">
+                                    ${Number(notif.total || 0).toFixed(2)}
+                                  </span>
+                                </p>
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                                      STATUS_STYLES[notif.status] || 'bg-gray-100 text-gray-500'
+                                    }`}
+                                  >
+                                    {notif.status}
+                                  </span>
+                                  <span className="text-[10px] text-[#b0bac7]">
+                                    {timeAgo(notif.created_at)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Unread dot + arrow */}
+                              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                {isUnread && (
+                                  <span className="mt-1 h-2 w-2 rounded-full bg-[#f08a2f]" />
+                                )}
+                                <FiArrowRight className="text-xs text-[#d1d5db]" />
+                              </div>
+                            </button>
+                            <span className="block h-px bg-[#f3f4f6] last:hidden" />
+                          </li>
+                        )
+                      })
+                    )}
+                  </ul>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className="border-t border-[#f0f2f5] px-4 py-2.5">
+                      <button
+                        onClick={() => { setActiveTab('orders'); setIsNotifOpen(false) }}
+                        className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-[#f08a2f] transition hover:underline"
+                      >
+                        View all orders <FiArrowRight className="text-xs" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <span className="h-[30px] w-px border-r border-gray-200" />
               <div className="hidden text-right md:block">
                 <p className="text-sm font-semibold text-[#202734]">{adminDisplayName}</p>

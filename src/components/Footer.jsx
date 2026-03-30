@@ -162,21 +162,21 @@ const Footer = () => {
         <div className="mt-10 border-t border-white/10 pt-6 md:mt-12">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <p className="text-xs text-white/70 md:text-[15px] leading-[1.5]">
-              © 2024, Brinase Theme. All Rights Reserved. Themes By BrainStreamtechnolaps PVT.LTD.
+              © {new Date().getFullYear()}, Brinase Theme. All Rights Reserved. Themes By BrainStreamtechnolaps PVT.LTD.
             </p>
 
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <img src={paymentLogosImage} alt="Payment Logos" className="" />
             </div>
           </div>
-          <div className="mt-4 border-t border-white/10 pt-4 text-right">
+          {/* <div className="mt-4 border-t border-white/10 pt-4 text-right">
             <button
               className="text-xs text-white/70 underline underline-offset-2 transition hover:text-white"
               onClick={() => setIsAdminModalOpen(true)}
             >
               Admin Access
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>

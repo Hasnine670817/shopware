@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 
@@ -14,6 +15,12 @@ const formatDate = (isoDate) =>
 
 const OrderConfirmationPage = () => {
   const { lastOrder } = useCart()
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsVisible(true), 40)
+    return () => clearTimeout(t)
+  }, [])
 
   if (!lastOrder) {
     return <Navigate to="/shop" replace />
@@ -21,7 +28,11 @@ const OrderConfirmationPage = () => {
 
   return (
     <section className="bg-[#f5f5f5] px-4 py-12 md:py-16">
-      <div className="container-custom max-w-4xl">
+      <div
+        className={`container-custom max-w-4xl transition-all duration-500 ${
+          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
+        }`}
+      >
         <div className="rounded-2xl bg-white p-6 shadow-sm md:p-8">
           <div className="mb-6 flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-green-100 text-xl text-green-600">
